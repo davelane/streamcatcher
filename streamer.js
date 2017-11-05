@@ -7,11 +7,11 @@ const mimedb = require('mime-db');
 const moment = require('moment');
 
 /**
- * Main StreamCapture class
+ * Main StreamCatcher class
  */
-class StreamCapture {
+class StreamCatcher {
   /**
-   * StreamCapture constructor
+   * StreamCatcher constructor
    *
    * @param {string} url the url of the http stream to capture
    * @param {string} duration how long to capture (Moment duration string: see
