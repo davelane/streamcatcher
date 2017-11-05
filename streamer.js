@@ -1,7 +1,7 @@
 const http = require('http');
+const https = require('https');
 const Promise = require('bluebird');
-const fs = Promise.promisifyAll(require('fs-extra'),
-  {filter: (name) => !name.includes('Sync')});
+const fs = require('fs-extra');
 const path = require('path');
 const mimedb = require('mime-db');
 const moment = require('moment');
@@ -29,7 +29,6 @@ class StreamCatcher {
     this.logger = logger;
     if (!this.logger) this.logger = console;
 
-    this.desc = desc;
     this.url = url;
     this.duration = duration;
     this.dirTmp = dirTmp;
@@ -41,7 +40,7 @@ class StreamCatcher {
     this.stoppedNormally = false;
 
     this.fileExtension = 'out';
-    this.fileName = basename + '-' +
+    this.fileBaseName = basename + '-' +
       this.startTime.format('YYYY-MM-DD-HH-mm');
   }
 
@@ -68,27 +67,19 @@ class StreamCatcher {
   }
 
   /**
-   * The file name with extension
-   * @return {string} the file name
-   */
-  _getFullFileName() {
-    return this.fileName + '.' + this.fileExtension;
-  }
-
-  /**
    * The full file name with path
    * @return {string} the full file name
    */
-  _getFullFileNameWithPath() {
-    return path.resolve(this.dirTmp, this.getFileName());
+  _getFullFilePathInitial() {
+    return path.resolve(this.dirTmp, this.fileBaseName);
   }
 
   /**
    * The full file name with path of the final destination
    * @return {string} the full file name
    */
-  _getFullFileNameWithPathFinal() {
-    return path.resolve(this.dirToSaveTo, this.getFileName());
+  _getFullFilePathFinal() {
+    return path.resolve(this.dirToSaveTo, this.fileBaseName + '.' + this.fileExtension);
   }
 
   /**
@@ -98,12 +89,12 @@ class StreamCatcher {
   _handleExecutionEnd(error) {
     let self = this;
     if (error) {
-      logger.error(error.message);
+      this.logger.error(error.message);
     }
     if (self.stoppedNormally) {
-      logger.info('Received total (OK) ' + self.receivedBytesTotal + ' bytes.');
+      this.logger.info('Received total (OK) ' + self.receivedBytesTotal + ' bytes.');
     } else {
-      logger.info('Received total (EARLY) ' + self.receivedBytesTotal +
+      this.logger.info('Received total (EARLY) ' + self.receivedBytesTotal +
         ' bytes');
     }
   }
@@ -115,16 +106,18 @@ class StreamCatcher {
   execute() {
     let self = this;
 
-    logger.info('Starting ' + this.fileName + '...');
+    this.logger.info('Starting ' + this.fileBaseName + '...');
 
-    return Promise.join(
-      fs.ensureDirAsync(self.dirTmp),
-      fs.ensureDirAsync(self.dirToSaveTo),
-      fs.createWriteStream(self._getFullFileNameWithPath()),
-      (stream) => {
+    return Promise.all(
+      fs.ensureDir(self.dirTmp),
+      fs.ensureDir(self.dirToSaveTo))
+      .then(() => fs.createWriteStream(self._getFullFilePathInitial()))
+      .then((stream) => {
         return new Promise((resolve, reject) => {
-          let client = http.get(self.url, (response) => {
-            logger.info('Connected to ' + self.url + '...');
+          let protocolClient = http;
+          if (self.url.startsWith("https:")) protocolClient = https;
+          let client = protocolClient.get(self.url, (response) => {
+            this.logger.info('Connected to ' + self.url + '...');
             self._setEncoding(response.headers['content-type']);
 
             const statusCode = response.statusCode;
@@ -159,15 +152,15 @@ class StreamCatcher {
         });
       })
       .then(() => {
-        return fs.moveAsync(
-          self._getFullFileNameWithPath(),
-          self._getFullFileNameWithPathFinal());
+        return fs.move(
+          self._getFullFilePathInitial(),
+          self._getFullFilePathFinal());
       })
       .then(() => {
-        logger.info('Job finished: ' + self.fileName());
-        return this._getFullFileNameWithPathFinal();
+        this.logger.info('Job finished: ' + self.fileBaseName);
+        return this._getFullFilePathFinal();
       });
   }
 }
 
-module.exports = StreamCapture;
+module.exports = StreamCatcher;
