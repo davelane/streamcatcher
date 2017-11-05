@@ -16,9 +16,9 @@ Create a StreamCatcher object with the following parameters:
 
 
 ```javascript
-      const url = 'http://pri.gocaster.net/td4';
-      const streamCatcher = new StreamCatcher(url, "PT3S", 'testdownload', 'test/tmp/down', 'test/tmp/final', console);
-      streamCatcher.execute()
-        .then((filename) => fs.stat(filename))
-        .then((stats) => console.log(filename.size + " bytes captured!"))
+const url = 'http://pri.gocaster.net/td4';
+const streamCatcher = new StreamCatcher(url, "PT3S", 'testdownload', 'test/tmp/down', 'test/tmp/final', console);
+streamCatcher.execute()
+  .then((filename) => fs.stat(filename))
+  .then((stats) => console.log(filename.size + " bytes captured!"))
 ```
