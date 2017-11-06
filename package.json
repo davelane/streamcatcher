@@ -1,6 +1,6 @@
 {
   "name": "streamcatcher",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Capture a http stream for a duration of time",
   "main": "streamer.js",
   "repository": {
