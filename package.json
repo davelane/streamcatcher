@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Capture a http stream for a duration of time",
   "main": "streamer.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davelane/streamcatcher"
+  },
   "scripts": {
     "test": "node_modules/.bin/mocha -w"
   },
