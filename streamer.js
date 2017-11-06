@@ -1,5 +1,5 @@
-const http = require('http');
-const https = require('https');
+const http = require('follow-redirects').http;
+const https = require('follow-redirects').https;
 const Promise = require('bluebird');
 const fs = require('fs-extra');
 const path = require('path');
@@ -37,7 +37,6 @@ class StreamCatcher {
     this.jobMediaExtension = null;
     this.encoding = null;
     this.receivedBytesTotal = 0;
-    this.stoppedNormally = false;
 
     this.fileExtension = 'out';
     this.fileBaseName = basename + '-' +
@@ -106,18 +105,20 @@ class StreamCatcher {
   execute() {
     let self = this;
 
-    this.logger.info('Starting ' + this.fileBaseName + '...');
-
+    self.logger.info('Starting ' + self.fileBaseName + '...');
+    let timerFired = false;
+    
     return Promise.all(
       fs.ensureDir(self.dirTmp),
       fs.ensureDir(self.dirToSaveTo))
-      .then(() => fs.createWriteStream(self._getFullFilePathInitial()))
+      .then(() => 
+        fs.createWriteStream(self._getFullFilePathInitial()))
       .then((stream) => {
         return new Promise((resolve, reject) => {
           let protocolClient = http;
           if (self.url.startsWith("https:")) protocolClient = https;
           let client = protocolClient.get(self.url, (response) => {
-            this.logger.info('Connected to ' + self.url + '...');
+            self.logger.info('Connected to ' + self.url + '...');
             self._setEncoding(response.headers['content-type']);
 
             const statusCode = response.statusCode;
@@ -135,7 +136,7 @@ class StreamCatcher {
             });
             response.on('end', () => {
               stream.end();
-              if (!self.stoppedNormally) {
+              if (!timerFired) {
                 clearTimeout(timer);
               }
               self._handleExecutionEnd();
@@ -146,7 +147,7 @@ class StreamCatcher {
             reject(e);
           });
           let timer = setTimeout(() => {
-            self.stoppedNormally = true;
+            timerFired = true;
             client.abort();
           }, moment.duration(self.duration).asMilliseconds());
         });
@@ -157,8 +158,8 @@ class StreamCatcher {
           self._getFullFilePathFinal());
       })
       .then(() => {
-        this.logger.info('Job finished: ' + self.fileBaseName);
-        return this._getFullFilePathFinal();
+        self.logger.info('Job finished: ' + self.fileBaseName);
+        return self._getFullFilePathFinal();
       });
   }
 }
